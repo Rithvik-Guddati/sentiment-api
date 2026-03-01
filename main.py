@@ -28,7 +28,7 @@ async def analyze_comment(data: CommentRequest):
     try:
         response = client.responses.create(
             model="gpt-4.1-mini",
-            input=f"Analyze the sentiment of this comment: {data.comment}",
+            input=f"Analyze the sentiment of this comment and respond only with structured JSON: {data.comment}",
             response_format={
                 "type": "json_schema",
                 "json_schema": {
@@ -53,7 +53,9 @@ async def analyze_comment(data: CommentRequest):
             }
         )
 
-        return response.output[0].content[0].parsed
+        # SAFEST WAY (works with OpenAI v2 SDK)
+        return response.output_parsed
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print("ERROR:", str(e))  # This will appear in Render logs
+        raise HTTPException(status_code=500, detail="Internal Server Error")
