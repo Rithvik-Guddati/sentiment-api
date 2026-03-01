@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from openai import OpenAI
 import os
 from fastapi.middleware.cors import CORSMiddleware
+import json
 
 app = FastAPI()
 
@@ -22,36 +23,29 @@ class CommentRequest(BaseModel):
 @app.post("/comment")
 async def analyze_comment(data: CommentRequest):
 
+    if not data.comment.strip():
+        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+
     try:
-        response = client.responses.create(
+        response = client.chat.completions.create(
             model="gpt-4.1-mini",
-            input=f"Analyze the sentiment of this comment: {data.comment}",
-            response_format={
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "sentiment_schema",
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "sentiment": {
-                                "type": "string",
-                                "enum": ["positive", "negative", "neutral"]
-                            },
-                            "rating": {
-                                "type": "integer",
-                                "minimum": 1,
-                                "maximum": 5
-                            }
-                        },
-                        "required": ["sentiment", "rating"],
-                        "additionalProperties": False
-                    }
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a sentiment analysis API. Return only valid JSON."
+                },
+                {
+                    "role": "user",
+                    "content": f"Analyze the sentiment of this comment: {data.comment}"
                 }
+            ],
+            response_format={
+                "type": "json_object"
             }
         )
 
-        print("RAW RESPONSE:", response)
-        return response.output_parsed
+        result = response.choices[0].message.content
+        return json.loads(result)
 
     except Exception as e:
         print("FULL ERROR:", repr(e))
