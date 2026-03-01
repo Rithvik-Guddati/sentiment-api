@@ -23,30 +23,39 @@ class CommentRequest(BaseModel):
 @app.post("/comment")
 async def analyze_comment(data: CommentRequest):
 
-    if not data.comment.strip():
-        raise HTTPException(status_code=400, detail="Comment cannot be empty")
+    text = data.comment.lower()
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a sentiment analysis API. Return only valid JSON."
-                },
-                {
-                    "role": "user",
-                    "content": f"Analyze the sentiment of this comment: {data.comment}"
-                }
-            ],
-            response_format={
-                "type": "json_object"
-            }
-        )
+    positive_words = [
+        "good", "great", "excellent", "amazing", "love",
+        "awesome", "fantastic", "best", "wonderful"
+    ]
 
-        result = response.choices[0].message.content
-        return json.loads(result)
+    negative_words = [
+        "bad", "worst", "terrible", "awful", "hate",
+        "poor", "horrible", "disappointing"
+    ]
 
-    except Exception as e:
-        print("FULL ERROR:", repr(e))
-        raise HTTPException(status_code=500, detail=str(e))
+    score = 3  # neutral baseline
+
+    for word in positive_words:
+        if word in text:
+            score += 1
+
+    for word in negative_words:
+        if word in text:
+            score -= 1
+
+    # clamp between 1 and 5
+    score = max(1, min(5, score))
+
+    if score >= 4:
+        sentiment = "positive"
+    elif score <= 2:
+        sentiment = "negative"
+    else:
+        sentiment = "neutral"
+
+    return {
+        "sentiment": sentiment,
+        "rating": score
+    }
