@@ -22,13 +22,10 @@ class CommentRequest(BaseModel):
 @app.post("/comment")
 async def analyze_comment(data: CommentRequest):
 
-    if not data.comment.strip():
-        raise HTTPException(status_code=400, detail="Comment cannot be empty")
-
     try:
         response = client.responses.create(
             model="gpt-4.1-mini",
-            input=f"Analyze the sentiment of this comment and respond only with structured JSON: {data.comment}",
+            input=f"Analyze the sentiment of this comment: {data.comment}",
             response_format={
                 "type": "json_schema",
                 "json_schema": {
@@ -53,9 +50,9 @@ async def analyze_comment(data: CommentRequest):
             }
         )
 
-        # SAFEST WAY (works with OpenAI v2 SDK)
+        print("RAW RESPONSE:", response)
         return response.output_parsed
 
     except Exception as e:
-        print("ERROR:", str(e))  # This will appear in Render logs
-        raise HTTPException(status_code=500, detail="Internal Server Error")
+        print("FULL ERROR:", repr(e))
+        raise HTTPException(status_code=500, detail=str(e))
